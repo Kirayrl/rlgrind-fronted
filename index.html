@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>RLMatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ── AUTH SCREEN ── -->
+  <div id="screen-auth" class="screen active">
+    <div class="auth-container">
+      <div class="logo">RL<span>MATCH</span></div>
+      <p class="logo-sub">Ranked 1v1 entre potes</p>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="login">Connexion</button>
+        <button class="tab" data-tab="register">Inscription</button>
+      </div>
+
+      <form id="form-login" class="auth-form active">
+        <input type="text" id="login-username" placeholder="Username" autocomplete="username">
+        <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
+        <button type="submit" class="btn-primary">Se connecter</button>
+        <p class="form-error" id="login-error"></p>
+      </form>
+
+      <form id="form-register" class="auth-form">
+        <input type="text" id="reg-username" placeholder="Username (3-20 chars)" autocomplete="username">
+        <input type="password" id="reg-password" placeholder="Password (min 6 chars)" autocomplete="new-password">
+        <button type="submit" class="btn-primary">Créer le compte</button>
+        <p class="form-error" id="reg-error"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── MAIN SCREEN ── -->
+  <div id="screen-main" class="screen">
+    <header>
+      <div class="header-logo">RL<span>MATCH</span></div>
+      <nav>
+        <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+        <button class="nav-btn" data-view="leaderboard">Leaderboard</button>
+        <!-- Bouton Admin (masqué par défaut) -->
+        <button class="nav-btn" id="nav-btn-admin" data-view="admin" style="display: none; color: #ff4757;">Admin</button>
+      </nav>
+      <button id="btn-logout" class="btn-ghost">Déco</button>
+    </header>
+
+    <!-- DASHBOARD VIEW -->
+    <div id="view-dashboard" class="view active">
+      <!-- Profil card -->
+      <div class="profile-card">
+        <div class="profile-info">
+          <div class="profile-name" id="profile-username">—</div>
+          <div class="profile-rank" id="profile-rank">—</div>
+        </div>
+        <div class="profile-elo">
+          <span id="profile-elo">—</span>
+          <small>ELO</small>
+        </div>
+        <div class="profile-stats">
+          <div class="stat"><span id="stat-wins">0</span><small>V</small></div>
+          <div class="stat"><span id="stat-losses">0</span><small>D</small></div>
+          <div class="stat"><span id="stat-winrate">0</span><small>%</small></div>
+        </div>
+      </div>
+
+      <!-- Matchmaking -->
+      <div class="matchmaking-card" id="mm-card">
+        <div id="mm-idle">
+          <h2>Prêt à jouer ?</h2>
+          <p>Trouve un adversaire en ranked 1v1 RL</p>
+          <button id="btn-queue" class="btn-primary btn-big">CHERCHER UN MATCH</button>
+        </div>
+
+        <div id="mm-searching" class="hidden">
+          <div class="spinner"></div>
+          <h2>En recherche...</h2>
+          <p>On cherche un adversaire à ton niveau</p>
+          <button id="btn-cancel-queue" class="btn-ghost">Annuler</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEADERBOARD VIEW -->
+    <div id="view-leaderboard" class="view">
+      <h2 class="section-title">Classement</h2>
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Joueur</th>
+            <th>Division</th>
+            <th>ELO</th>
+            <th>V</th>
+            <th>D</th>
+            <th>%</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboard-body"></tbody>
+      </table>
+    </div>
+
+    <!-- ADMIN VIEW -->
+    <div id="view-admin" class="view">
+      <h2 class="section-title">🔒 Panneau d'Administration - Litiges</h2>
+      <div id="admin-disputes-container">
+        <p>Chargement des litiges en cours...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MATCH SCREEN ── -->
+  <div id="screen-match" class="screen">
+    <div class="match-container">
+
+      <!-- Phase 1 : lobby trouvé -->
+      <div id="match-phase-lobby" class="match-phase active">
+        <div class="match-vs">
+          <div class="match-player" id="match-me-name">—</div>
+          <div class="vs">VS</div>
+          <div class="match-player" id="match-opp-name">—</div>
+        </div>
+        <div class="lobby-card">
+          <h3>Rejoins le lobby RL</h3>
+          <div class="lobby-cred">
+            <div class="cred-row">
+              <span class="cred-label">Nom du lobby</span>
+              <span class="cred-value" id="lobby-name">—</span>
+              <button class="btn-copy" data-copy="lobby-name">Copier</button>
+            </div>
+            <div class="cred-row">
+              <span class="cred-label">Mot de passe</span>
+              <span class="cred-value" id="lobby-pass">—</span>
+              <button class="btn-copy" data-copy="lobby-pass">Copier</button>
+            </div>
+          </div>
+          <p class="lobby-tip">🎮 Crée le lobby dans RL avec ces infos. L'adversaire doit les rentrer pour rejoindre.</p>
+          <button id="btn-match-done" class="btn-primary btn-big">Match terminé — Soumettre le score</button>
+        </div>
+      </div>
+
+      <!-- Phase 2 : saisie du score -->
+      <div id="match-phase-score" class="match-phase">
+        <h2>Quel est le score ?</h2>
+        <p class="score-tip">Rentre honnêtement. Si les scores ne matchent pas → litige automatique.</p>
+        <div class="score-inputs">
+          <div class="score-col">
+            <label id="score-label-me">Toi</label>
+            <input type="number" id="score-me" min="0" max="99" value="0">
+          </div>
+          <div class="score-sep">—</div>
+          <div class="score-col">
+            <label id="score-label-opp">Adversaire</label>
+            <input type="number" id="score-opp" min="0" max="99" value="0">
+          </div>
+        </div>
+        <button id="btn-submit-score" class="btn-primary btn-big">Confirmer le score</button>
+      </div>
+
+      <!-- Phase 3 : en attente de l'adversaire -->
+      <div id="match-phase-waiting" class="match-phase">
+        <div class="spinner"></div>
+        <h2>Score soumis ✓</h2>
+        <p>En attente de la confirmation de l'adversaire...</p>
+      </div>
+
+      <!-- Phase 4 : résultat -->
+      <div id="match-phase-result" class="match-phase">
+        <div id="result-icon" class="result-icon">—</div>
+        <h2 id="result-text">—</h2>
+        <div class="result-elo">
+          <span id="result-elo-change">—</span>
+          <small>ELO</small>
+        </div>
+        <div class="result-newelo">Nouvel ELO : <strong id="result-new-elo">—</strong></div>
+        <button id="btn-back-home" class="btn-primary">Retour au dashboard</button>
+      </div>
+
+      <!-- Phase litige -->
+      <div id="match-phase-dispute" class="match-phase">
+        <div class="dispute-icon">⚠️</div>
+        <h2>Litige détecté</h2>
+        <p id="dispute-reason">Les scores soumis ne correspondent pas.</p>
+        <p>Un admin devra trancher manuellement.</p>
+        <button id="btn-dispute-home" class="btn-ghost">Retour au dashboard</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
