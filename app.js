@@ -38,6 +38,7 @@ function showView(name) {
   });
   if (name === 'leaderboard') loadLeaderboard();
   if (name === 'admin') loadAdminDisputes();
+  if (name === 'dashboard') loadMatchHistory();
 }
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
@@ -119,6 +120,40 @@ function checkAdminUI() {
   }
 }
 
+// ── HISTORIQUE DES MATCHS ────────────────────────────────────────────────────
+async function loadMatchHistory() {
+  const container = $('match-history-container');
+  if (!container) return;
+
+  try {
+    const matches = await api('GET', '/match/my-history');
+    if (matches.length === 0) {
+      container.innerHTML = '<p>Aucun match récent.</p>';
+      return;
+    }
+
+    container.innerHTML = matches.map(m => {
+      const isP1 = (m.player1._id || m.player1) === (me._id || me.id);
+      const oppName = isP1 ? m.player2.username : m.player1.username;
+      const isWinner = m.winner && (m.winner.toString() === (me._id || me.id).toString());
+      
+      return `
+        <div class="history-item" style="padding: 10px; margin-bottom: 8px; background: rgba(255,255,255,0.05); border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <strong>vs ${oppName}</strong>
+            <div style="font-size: 0.85rem; opacity: 0.7;">${new Date(m.completedAt).toLocaleDateString()}</div>
+          </div>
+          <div style="font-weight: bold; color: ${isWinner ? 'var(--win)' : 'var(--loss)'};">
+            ${isWinner ? 'Victoire 🏆' : 'Défaite 💀'}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 // ── ADMIN PANEL ────────────────────────────────────────────────────────────
 async function loadAdminDisputes() {
   const container = $('admin-disputes-container');
@@ -186,7 +221,7 @@ function initSocket() {
     $('match-me-name').textContent  = me.username;
     $('match-opp-name').textContent = data.opponent.username;
 
-    // On convertit tout en string pour comparer proprement l'ID du joueur connecté avec l'hôte
+    // Comparaison sécurisée en chaînes de caractères pour identifier l'hôte
     const myId = String(me._id || me.id);
     const hostId = String(data.player1Id || data.player1);
     const isHost = (myId === hostId);
@@ -194,17 +229,13 @@ function initSocket() {
     const lobbyCredEl = document.querySelector('.lobby-cred');
     const lobbyTipEl = document.querySelector('.lobby-tip');
 
+    lobbyCredEl.style.display = 'block';
+    $('lobby-name').textContent = data.lobbyName;
+    $('lobby-pass').textContent = data.lobbyPassword;
+
     if (isHost) {
-      // 🎮 C'EST TOI L'HÔTE : Tu crées le salon
-      lobbyCredEl.style.display = 'block';
-      $('lobby-name').textContent     = data.lobbyName;
-      $('lobby-pass').textContent     = data.lobbyPassword;
       lobbyTipEl.innerHTML = `🎮 <strong>Tu es l'hôte :</strong> Crée un salon privé dans Rocket League avec ces infos et envoie-les à ton adversaire.`;
     } else {
-      // 🎮 C'ÈST TON ADVERSAIRE L'HÔTE : Tu rejoins son salon
-      lobbyCredEl.style.display = 'block';
-      $('lobby-name').textContent     = data.lobbyName;
-      $('lobby-pass').textContent     = data.lobbyPassword;
       lobbyTipEl.innerHTML = `🎮 <strong>Rejoins le salon :</strong> L'adversaire a créé le salon. Utilise le nom et le mot de passe ci-dessus pour le rejoindre.`;
     }
 
@@ -279,7 +310,7 @@ async function checkMatchResult() {
 }
 
 function showResult(match) {
-  const isP1     = match.player1._id === me.id || match.player1 === me.id || match.player1._id === me._id || match.player1 === me._id;
+  const isP1     = (match.player1._id || match.player1) === (me._id || me.id);
   const myChange = isP1 ? match.eloChanges.player1 : match.eloChanges.player2;
   const myGoals  = isP1 ? match.finalScore.player1Goals : match.finalScore.player2Goals;
   const oppGoals = isP1 ? match.finalScore.player2Goals : match.finalScore.player1Goals;
@@ -308,7 +339,7 @@ function switchPhase(name) {
 ['btn-back-home', 'btn-dispute-home'].forEach(id => {
   $(id).addEventListener('click', async () => {
     currentMatch = null;
-    try { me = await api('GET', '/auth/me'); updateProfileUI(); } catch {}
+    try { me = await api('GET', '/auth/me'); updateProfileUI(); loadMatchHistory(); } catch {}
     $('mm-searching').classList.add('hidden');$('mm-idle').classList.remove('hidden');
     showScreen('main');
     showView('dashboard');
