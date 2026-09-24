@@ -185,8 +185,26 @@ function initSocket() {
     currentMatch = data;
     $('match-me-name').textContent  = me.username;
     $('match-opp-name').textContent = data.opponent.username;
-    $('lobby-name').textContent     = data.lobbyName;
-    $('lobby-pass').textContent     = data.lobbyPassword;
+
+    // On vérifie si tu es le Joueur 1 (l'hôte) ou le Joueur 2 (l'invité)
+    const isHost = me._id === data.player1Id || me.id === data.player1Id || me._id === data.player1 || me.id === data.player1;
+
+    const lobbyCredEl = document.querySelector('.lobby-cred');
+    const lobbyTipEl = document.querySelector('.lobby-tip');
+
+    if (isHost) {
+      // 🎮 C'EST TOI L'HÔTE : Tu dois créer le salon RL et donner les infos
+      lobbyCredEl.style.display = 'block';
+      $('lobby-name').textContent     = data.lobbyName;
+      $('lobby-pass').textContent     = data.lobbyPassword;
+      lobbyTipEl.innerHTML = `🎮 <strong>Tu es l'hôte :</strong> Crée le salon privé dans Rocket League avec ces infos et transmets-les à ton adversaire.`;
+    } else {
+      // 🎮 C'EST TON ADVERSAIRE L'HÔTE : Tu dois juste récupérer ses infos pour le rejoindre
+      lobbyCredEl.style.display = 'block';
+      $('lobby-name').textContent     = data.lobbyName;
+      $('lobby-pass').textContent     = data.lobbyPassword;
+      lobbyTipEl.innerHTML = `🎮 <strong>Rejoins le salon :</strong> L'adversaire a créé le salon. Utilise le nom et le mot de passe ci-dessus pour le rejoindre dans Rocket League.`;
+    }
 
     document.querySelectorAll('.match-phase').forEach(p => p.classList.remove('active'));
     $('match-phase-lobby').classList.add('active');
