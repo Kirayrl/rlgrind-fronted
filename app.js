@@ -6,12 +6,10 @@ const API_URL = `${BASE_URL}/api`;
 let token    = localStorage.getItem('rlmatch_token') || null;
 let me       = null;
 let socket   = null;
-let currentMatch = null; // { matchId, lobbyName, lobbyPassword, opponent, team, opponents }
+let currentMatch = null;
 
 // ── UTILS ───────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
-const show = id => { $(id).classList.add('active'); };
-const hide = id => { $(id).classList.remove('active'); };
 
 async function api(method, path, body) {
   const headers = { 'Content-Type': 'application/json' };
@@ -102,20 +100,12 @@ async function onLoggedIn() {
 }
 
 function updateProfileUI() {
-  // Mode 1v1
   $('profile-username').textContent = me.username;
   $('profile-rank').textContent     = me.rank;
   $('profile-elo').textContent      = me.elo;
   $('stat-wins').textContent        = me.stats.wins;
   $('stat-losses').textContent      = me.stats.losses;
   $('stat-winrate').textContent     = me.winrate;
-
-  // Mode 2v2
-  $('profile-username-2v2').textContent = me.username;
-  $('profile-rank-2v2').textContent     = me.rank2v2 \vert{}\vert{} 'Bronze';$('profile-elo-2v2').textContent      = me.elo2v2 || 400;
-  $('stat-wins-2v2').textContent        = me.stats2v2?.wins || 0;
-  $('stat-losses-2v2').textContent      = me.stats2v2?.losses || 0;
-  $('stat-winrate-2v2').textContent     = me.winrate2v2 || 0;
 }
 
 function checkAdminUI() {
@@ -191,28 +181,13 @@ function initSocket() {
   socket.on('connect', () => console.log('[WS] connecté'));
   socket.on('connect_error', err => console.error('[WS]', err.message));
 
-  // Match trouvé (1v1 ou 2v2)
   socket.on('match:found', data => {
     currentMatch = data;
-    
-    if (data.opponents && data.team) {
-      // Cas 2v2
-      const mate = data.team.find(p => p.userId !== me.id && p.userId !== me._id)?.username || 'Coéquipier';
-      const opp1 = data.opponents[0]?.username || 'Adversaire 1';
-      const opp2 = data.opponents[1]?.username || 'Adversaire 2';
-
-      $('match-me-name').textContent = `${me.username} & ${mate}`;
-      $('match-opp-name').textContent = `${opp1} & ${opp2}`;
-    } else {
-      // Cas 1v1
-      $('match-me-name').textContent  = me.username;
-      $('match-opp-name').textContent = data.opponent.username;
-    }
-
+    $('match-me-name').textContent  = me.username;
+    $('match-opp-name').textContent = data.opponent.username;
     $('lobby-name').textContent     = data.lobbyName;
     $('lobby-pass').textContent     = data.lobbyPassword;
 
-    // Reset toutes les phases
     document.querySelectorAll('.match-phase').forEach(p => p.classList.remove('active'));
     $('match-phase-lobby').classList.add('active');
     showScreen('match');
@@ -223,7 +198,7 @@ function initSocket() {
   });
 }
 
-// ── QUEUE 1v1 ───────────────────────────────────────────────────────────────
+// ── QUEUE ───────────────────────────────────────────────────────────────────
 $('btn-queue').addEventListener('click', () => {
   socket.emit('queue:join');
   $('mm-idle').classList.add('hidden');$('mm-searching').classList.remove('hidden');
@@ -234,21 +209,9 @@ $('btn-cancel-queue').addEventListener('click', () => {
   $('mm-searching').classList.add('hidden');$('mm-idle').classList.remove('hidden');
 });
 
-// ── QUEUE 2v2 ───────────────────────────────────────────────────────────────
-$('btn-queue-2v2').addEventListener('click', () => {
-  socket.emit('queue2v2:join');
-  $('mm-idle-2v2').classList.add('hidden');$('mm-searching-2v2').classList.remove('hidden');
-});
-
-$('btn-cancel-queue-2v2').addEventListener('click', () => {
-  socket.emit('queue:leave');
-  $('mm-searching-2v2').classList.add('hidden');$('mm-idle-2v2').classList.remove('hidden');
-});
-
 // ── MATCH FLOW ───────────────────────────────────────────────────────────────
-
 $('btn-match-done').addEventListener('click', () => {$('score-label-me').textContent = me.username;
-  $('score-label-opp').textContent = currentMatch.opponent ? currentMatch.opponent.username : 'Adversaires';
+  $('score-label-opp').textContent = currentMatch.opponent.username;
   $('score-me').value = '0';$('score-opp').value = '0';
   switchPhase('score');
 });
@@ -262,13 +225,10 @@ $('btn-submit-score').addEventListener('click', async () => {
   try {
     await api('POST', `/match/${currentMatch.matchId}/submit`, { myScore, theirScore });
 
-    const oppId = currentMatch.opponent ? (currentMatch.opponent.id || currentMatch.opponent._id) : (currentMatch.opponents?.[0]?.userId);
-    if (oppId) {
-      socket.emit('match:score_submitted', {
-        matchId: currentMatch.matchId,
-        opponentId: oppId
-      });
-    }
+    socket.emit('match:score_submitted', {
+      matchId: currentMatch.matchId,
+      opponentId: currentMatch.opponent.id || currentMatch.opponent._id
+    });
 
     switchPhase('waiting');
     pollMatchResult();
@@ -299,7 +259,7 @@ async function checkMatchResult() {
 }
 
 function showResult(match) {
-  const isP1    = match.player1._id === me.id || match.player1 === me.id || match.player1._id === me._id || match.player1 === me._id;
+  const isP1     = match.player1._id === me.id || match.player1 === me.id || match.player1._id === me._id || match.player1 === me._id;
   const myChange = isP1 ? match.eloChanges.player1 : match.eloChanges.player2;
   const myGoals  = isP1 ? match.finalScore.player1Goals : match.finalScore.player2Goals;
   const oppGoals = isP1 ? match.finalScore.player2Goals : match.finalScore.player1Goals;
@@ -310,7 +270,7 @@ function showResult(match) {
   $('result-icon').textContent     = won ? '🏆' : draw ? '🤝' : '💀';
   $('result-text').textContent     = won ? 'Victoire' : draw ? 'Égalité' : 'Défaite';
   $('result-elo-change').textContent = (myChange >= 0 ? '+' : '') + myChange;
-  $('result-elo-change').style.color = myChange >= 0 ? 'var(--win)' : 'var(--loss)';$('result-new-elo').textContent  = (me.elo || 400) + myChange;
+  $('result-elo-change').style.color = myChange >= 0 ? 'var(--win)' : 'var(--loss)';$('result-new-elo').textContent  = me.elo + myChange;
 
   switchPhase('result');
 }
@@ -330,7 +290,6 @@ function switchPhase(name) {
     currentMatch = null;
     try { me = await api('GET', '/auth/me'); updateProfileUI(); } catch {}
     $('mm-searching').classList.add('hidden');$('mm-idle').classList.remove('hidden');
-    $('mm-searching-2v2').classList.add('hidden');$('mm-idle-2v2').classList.remove('hidden');
     showScreen('main');
     showView('dashboard');
   });
