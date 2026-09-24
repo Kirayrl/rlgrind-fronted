@@ -6,7 +6,7 @@ const API_URL = `${BASE_URL}/api`;
 let token    = localStorage.getItem('rlmatch_token') || null;
 let me       = null;
 let socket   = null;
-let currentMatch = null; // { matchId, lobbyName, lobbyPassword, opponent }
+let currentMatch = null; // { matchId, lobbyName, lobbyPassword, opponent, team, opponents }
 
 // ── UTILS ───────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -93,7 +93,6 @@ $('btn-logout').addEventListener('click', () => {
 
 // ── LOGGED IN ─────────────────────────────────────────────────────────────
 async function onLoggedIn() {
-  // Refresh profil complet
   try { me = await api('GET', '/auth/me'); } catch {}
   updateProfileUI();
   checkAdminUI();
@@ -103,12 +102,20 @@ async function onLoggedIn() {
 }
 
 function updateProfileUI() {
+  // Mode 1v1
   $('profile-username').textContent = me.username;
   $('profile-rank').textContent     = me.rank;
   $('profile-elo').textContent      = me.elo;
   $('stat-wins').textContent        = me.stats.wins;
   $('stat-losses').textContent      = me.stats.losses;
   $('stat-winrate').textContent     = me.winrate;
+
+  // Mode 2v2
+  $('profile-username-2v2').textContent = me.username;
+  $('profile-rank-2v2').textContent     = me.rank2v2 \vert{}\vert{} 'Bronze';$('profile-elo-2v2').textContent      = me.elo2v2 || 400;
+  $('stat-wins-2v2').textContent        = me.stats2v2?.wins || 0;
+  $('stat-losses-2v2').textContent      = me.stats2v2?.losses || 0;
+  $('stat-winrate-2v2').textContent     = me.winrate2v2 || 0;
 }
 
 function checkAdminUI() {
@@ -171,7 +178,7 @@ async function resolveAdminDispute(matchId, winnerId) {
   try {
     await api('POST', `/admin/disputes/${matchId}/resolve`, { winnerId });
     alert('Litige résolu avec succès !');
-    loadAdminDisputes(); // Recharge la liste des litiges
+    loadAdminDisputes();
   } catch (err) {
     alert('Erreur : ' + err.message);
   }
@@ -184,11 +191,24 @@ function initSocket() {
   socket.on('connect', () => console.log('[WS] connecté'));
   socket.on('connect_error', err => console.error('[WS]', err.message));
 
-  // Match trouvé !
+  // Match trouvé (1v1 ou 2v2)
   socket.on('match:found', data => {
     currentMatch = data;
-    $('match-me-name').textContent  = me.username;
-    $('match-opp-name').textContent = data.opponent.username;
+    
+    if (data.opponents && data.team) {
+      // Cas 2v2
+      const mate = data.team.find(p => p.userId !== me.id && p.userId !== me._id)?.username || 'Coéquipier';
+      const opp1 = data.opponents[0]?.username || 'Adversaire 1';
+      const opp2 = data.opponents[1]?.username || 'Adversaire 2';
+
+      $('match-me-name').textContent = `${me.username} & ${mate}`;
+      $('match-opp-name').textContent = `${opp1} & ${opp2}`;
+    } else {
+      // Cas 1v1
+      $('match-me-name').textContent  = me.username;
+      $('match-opp-name').textContent = data.opponent.username;
+    }
+
     $('lobby-name').textContent     = data.lobbyName;
     $('lobby-pass').textContent     = data.lobbyPassword;
 
@@ -198,13 +218,12 @@ function initSocket() {
     showScreen('match');
   });
 
-  // L'adversaire a soumis son score
   socket.on('match:opponent_submitted', () => {
     checkMatchResult();
   });
 }
 
-// ── QUEUE ────────────────────────────────────────────────────────────────────
+// ── QUEUE 1v1 ───────────────────────────────────────────────────────────────
 $('btn-queue').addEventListener('click', () => {
   socket.emit('queue:join');
   $('mm-idle').classList.add('hidden');$('mm-searching').classList.remove('hidden');
@@ -215,16 +234,25 @@ $('btn-cancel-queue').addEventListener('click', () => {
   $('mm-searching').classList.add('hidden');$('mm-idle').classList.remove('hidden');
 });
 
+// ── QUEUE 2v2 ───────────────────────────────────────────────────────────────
+$('btn-queue-2v2').addEventListener('click', () => {
+  socket.emit('queue2v2:join');
+  $('mm-idle-2v2').classList.add('hidden');$('mm-searching-2v2').classList.remove('hidden');
+});
+
+$('btn-cancel-queue-2v2').addEventListener('click', () => {
+  socket.emit('queue:leave');
+  $('mm-searching-2v2').classList.add('hidden');$('mm-idle-2v2').classList.remove('hidden');
+});
+
 // ── MATCH FLOW ───────────────────────────────────────────────────────────────
 
-// "Match terminé" → aller à la saisie de score
-$('btn-match-done').addEventListener('click', () => {$('score-label-me').textContent  = me.username;
-  $('score-label-opp').textContent = currentMatch.opponent.username;
-  $('score-me').value  = '0';$('score-opp').value = '0';
+$('btn-match-done').addEventListener('click', () => {$('score-label-me').textContent = me.username;
+  $('score-label-opp').textContent = currentMatch.opponent ? currentMatch.opponent.username : 'Adversaires';
+  $('score-me').value = '0';$('score-opp').value = '0';
   switchPhase('score');
 });
 
-// Soumission du score
 $('btn-submit-score').addEventListener('click', async () => {
   const myScore    = parseInt($('score-me').value);
   const theirScore = parseInt($('score-opp').value);
@@ -234,15 +262,16 @@ $('btn-submit-score').addEventListener('click', async () => {
   try {
     await api('POST', `/match/${currentMatch.matchId}/submit`, { myScore, theirScore });
 
-    // Notifie l'adversaire en temps réel
-    socket.emit('match:score_submitted', {
-      matchId:     currentMatch.matchId,
-      opponentId: currentMatch.opponent.id || currentMatch.opponent._id
-    });
+    // Notifier l'adversaire ou les adversaires principaux
+    const oppId = currentMatch.opponent ? (currentMatch.opponent.id || currentMatch.opponent._id) : (currentMatch.opponents?.[0]?.userId);
+    if (oppId) {
+      socket.emit('match:score_submitted', {
+        matchId: currentMatch.matchId,
+        opponentId: oppId
+      });
+    }
 
     switchPhase('waiting');
-
-    // Poll toutes les 2s pour voir si le match est résolu
     pollMatchResult();
   } catch (err) {
     alert('Erreur : ' + err.message);
@@ -282,7 +311,7 @@ function showResult(match) {
   $('result-icon').textContent     = won ? '🏆' : draw ? '🤝' : '💀';
   $('result-text').textContent     = won ? 'Victoire' : draw ? 'Égalité' : 'Défaite';
   $('result-elo-change').textContent = (myChange >= 0 ? '+' : '') + myChange;
-  $('result-elo-change').style.color = myChange >= 0 ? 'var(--win)' : 'var(--loss)';$('result-new-elo').textContent  = me.elo + myChange;
+  $('result-elo-change').style.color = myChange >= 0 ? 'var(--win)' : 'var(--loss)';$('result-new-elo').textContent  = (me.elo || 400) + myChange;
 
   switchPhase('result');
 }
@@ -297,14 +326,12 @@ function switchPhase(name) {
   $(`match-phase-${name}`).classList.add('active');
 }
 
-// Retour au dashboard après match
 ['btn-back-home', 'btn-dispute-home'].forEach(id => {
   $(id).addEventListener('click', async () => {
     currentMatch = null;
-    // Refresh le profil
     try { me = await api('GET', '/auth/me'); updateProfileUI(); } catch {}
-    // Reset queue UI
     $('mm-searching').classList.add('hidden');$('mm-idle').classList.remove('hidden');
+    $('mm-searching-2v2').classList.add('hidden');$('mm-idle-2v2').classList.remove('hidden');
     showScreen('main');
     showView('dashboard');
   });

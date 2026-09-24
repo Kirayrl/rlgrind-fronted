@@ -14,7 +14,7 @@
   <div id="screen-auth" class="screen active">
     <div class="auth-container">
       <div class="logo">RL<span>MATCH</span></div>
-      <p class="logo-sub">Ranked 1v1 entre potes</p>
+      <p class="logo-sub">Ranked 1v1 & 2v2 entre potes</p>
 
       <div class="tabs">
         <button class="tab active" data-tab="login">Connexion</button>
@@ -52,11 +52,13 @@
 
     <!-- DASHBOARD VIEW -->
     <div id="view-dashboard" class="view active">
-      <!-- Profil card -->
+      
+      <!-- Profil card 1v1 -->
       <div class="profile-card">
         <div class="profile-info">
           <div class="profile-name" id="profile-username">—</div>
           <div class="profile-rank" id="profile-rank">—</div>
+          <small class="mode-badge">Mode 1v1</small>
         </div>
         <div class="profile-elo">
           <span id="profile-elo">—</span>
@@ -69,21 +71,56 @@
         </div>
       </div>
 
-      <!-- Matchmaking -->
+      <!-- Profil card 2v2 -->
+      <div class="profile-card">
+        <div class="profile-info">
+          <div class="profile-name" id="profile-username-2v2">—</div>
+          <div class="profile-rank" id="profile-rank-2v2">—</div>
+          <small class="mode-badge">Mode 2v2</small>
+        </div>
+        <div class="profile-elo">
+          <span id="profile-elo-2v2">—</span>
+          <small>ELO</small>
+        </div>
+        <div class="profile-stats">
+          <div class="stat"><span id="stat-wins-2v2">0</span><small>V</small></div>
+          <div class="stat"><span id="stat-losses-2v2">0</span><small>D</small></div>
+          <div class="stat"><span id="stat-winrate-2v2">0</span><small>%</small></div>
+        </div>
+      </div>
+
+      <!-- Matchmaking 1v1 -->
       <div class="matchmaking-card" id="mm-card">
         <div id="mm-idle">
-          <h2>Prêt à jouer ?</h2>
+          <h2>Matchmaking 1v1</h2>
           <p>Trouve un adversaire en ranked 1v1 RL</p>
-          <button id="btn-queue" class="btn-primary btn-big">CHERCHER UN MATCH</button>
+          <button id="btn-queue" class="btn-primary btn-big">CHERCHER UN MATCH 1v1</button>
         </div>
 
         <div id="mm-searching" class="hidden">
           <div class="spinner"></div>
-          <h2>En recherche...</h2>
+          <h2>En recherche (1v1)...</h2>
           <p>On cherche un adversaire à ton niveau</p>
           <button id="btn-cancel-queue" class="btn-ghost">Annuler</button>
         </div>
       </div>
+
+      <!-- Matchmaking 2v2 -->
+      <div class="matchmaking-card" id="mm-card-2v2">
+        <div id="mm-idle-2v2">
+          <h2>Matchmaking 2v2</h2>
+          <p>Trouve une équipe pour un match 2v2 RL</p>
+          <button id="btn-queue-2v2" class="btn-primary btn-big">CHERCHER UN MATCH 2v2</button>
+        </div>
+
+        <div id="mm-searching-2v2" class="hidden">
+          <div class="spinner"></div>
+          <h2>En recherche (2v2)...</h2>
+          <p>En attente de 4 joueurs pour lancer la partie</p>
+          <button id="btn-cancel-queue-2v2" class="btn-ghost">Annuler</button>
+        </div>
+      </div>
+
     </div>
 
     <!-- LEADERBOARD VIEW -->
