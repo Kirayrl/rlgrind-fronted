@@ -112,7 +112,8 @@ function updateProfileUI() {
 
   // Mode 2v2
   $('profile-username-2v2').textContent = me.username;
-  $('profile-rank-2v2').textContent     = me.rank2v2 \vert{}\vert{} 'Bronze';$('profile-elo-2v2').textContent      = me.elo2v2 || 400;
+  $('profile-rank-2v2').textContent     = me.rank2v2 || 'Bronze';
+$('profile-elo-2v2').textContent      = me.elo2v2 || 400;
   $('stat-wins-2v2').textContent        = me.stats2v2?.wins || 0;
   $('stat-losses-2v2').textContent      = me.stats2v2?.losses || 0;
   $('stat-winrate-2v2').textContent     = me.winrate2v2 || 0;
