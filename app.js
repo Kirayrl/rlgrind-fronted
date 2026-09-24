@@ -175,31 +175,18 @@ async function resolveAdminDispute(matchId, winnerId) {
 }
 
 // ── SOCKET.IO ────────────────────────────────────────────────────────────────
-socket.on('match:found', data => {
+function initSocket() {
+  socket = io(BASE_URL, { auth: { token } });
+
+  socket.on('connect', () => console.log('[WS] connecté'));
+  socket.on('connect_error', err => console.error('[WS]', err.message));
+
+  socket.on('match:found', data => {
     currentMatch = data;
     $('match-me-name').textContent  = me.username;
     $('match-opp-name').textContent = data.opponent.username;
-
-    // Détermine si le joueur actuel est l'hôte (celui qui crée le lobby RL)
-    // On compare l'ID de l'utilisateur connecté avec l'ID du joueur 1 renvoyé par le serveur
-    const isHost = me._id === data.player1Id || me.id === data.player1Id;
-
-    const lobbyTipEl = document.querySelector('.lobby-tip');
-    const lobbyCredEl = document.querySelector('.lobby-cred');
-
-    if (isHost) {
-      // C'EST L'HÔTE : Il doit créer le salon et donner les infos
-      lobbyCredEl.style.display = 'block';
-      $('lobby-name').textContent     = data.lobbyName;
-      $('lobby-pass').textContent     = data.lobbyPassword;
-      lobbyTipEl.innerHTML = `🎮 <strong>Tu es l'hôte :</strong> Crée un salon privé dans Rocket League avec ces infos et envoie-les à ton adversaire.`;
-    } else {
-      // C'EST L'INVITÉ : Il attend que l'hôte lui donne les infos, ou on les affiche si le backend les transmet
-      lobbyCredEl.style.display = 'block'; // ou 'none' si tu veux qu'il attende, mais afficher les infos générées par le serveur évite les confusions
-      $('lobby-name').textContent     = data.lobbyName;
-      $('lobby-pass').textContent     = data.lobbyPassword;
-      lobbyTipEl.innerHTML = `🎮 <strong>Rejoins l'adversaire :</strong> Utilise le nom et le mot de passe ci-dessus pour rejoindre son salon Rocket League.`;
-    }
+    $('lobby-name').textContent     = data.lobbyName;
+    $('lobby-pass').textContent     = data.lobbyPassword;
 
     document.querySelectorAll('.match-phase').forEach(p => p.classList.remove('active'));
     $('match-phase-lobby').classList.add('active');
